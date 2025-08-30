@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lateh Luxe - Confirm Email</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Lateh Luxe</div>
+    </header>
+    <main>
+        <h1>Email Confirmation</h1>
+        <div id="confirmation-message">
+            <p>Confirming your email...</p>
+        </div>
+    </main>
+    <script type="module">
+        import { supabase } from './js/supabase.js';
+
+        async function handleConfirmation() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const accessToken = urlParams.get('access_token');
+            const refreshToken = urlParams.get('refresh_token');
+            const type = urlParams.get('type');
+
+            if (type === 'signup' && accessToken && refreshToken) {
+                const { error } = await supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                });
+
+                if (error) {
+                    document.getElementById('confirmation-message').innerHTML = `
+                        <p>Error confirming email: ${error.message}</p>
+                        <p><a href="index.html">Return to Login</a></p>
+                    `;
+                    console.error('Confirmation error:', error.message);
+                    return;
+                }
+
+                document.getElementById('confirmation-message').innerHTML = `
+                    <p>Email confirmed successfully! You can now log in.</p>
+                    <p><a href="index.html">Return to Login</a></p>
+                `;
+            } else {
+                document.getElementById('confirmation-message').innerHTML = `
+                    <p>Invalid or missing confirmation link.</p>
+                    <p><a href="index.html">Return to Login</a></p>
+                `;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', handleConfirmation);
+    </script>
+</body>
+</html>
