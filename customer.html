@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lateh Luxe - Customer Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Lateh Luxe</div>
+        <nav>
+            <a href="curate.html">Curate</a>
+            <a href="boxes.html">View Boxes</a>
+            <a href="cart.html">Cart</a>
+            <a href="profile.html">Profile</a>
+            <button id="logout">Logout</button>
+        </nav>
+        <div class="hamburger">☰</div>
+        <div id="hamburger-menu">
+            <a href="curate.html">Curate</a>
+            <a href="boxes.html">View Boxes</a>
+            <a href="cart.html">Cart</a>
+            <a href="profile.html">Profile</a>
+            <a id="logout-mobile">Logout</a>
+        </div>
+    </header>
+    <main>
+        <h1 id="welcome-message">Welcome to Your Dashboard</h1>
+        <button onclick="window.location.href='curate.html'">Curate Package</button>
+        <button onclick="window.location.href='boxes.html'">View Curated Boxes</button>
+        <button onclick="window.location.href='cart.html'">View Cart</button>
+        <button onclick="window.location.href='profile.html'">View Profile</button>
+    </main>
+    <script type="module" src="js/customer.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script>
+        document.querySelector('.hamburger').addEventListener('click', () => {
+            document.getElementById('hamburger-menu').classList.toggle('active');
+        });
+        
+        document.getElementById('logout-mobile')?.addEventListener('click', () => {
+            document.getElementById('logout').click();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            document.body.classList.toggle('dark-mode', isDarkMode);
+        });
+    </script>
+</body>
+</html>
