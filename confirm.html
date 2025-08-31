@@ -22,21 +22,20 @@
         async function handleConfirmation() {
             const urlParams = new URLSearchParams(window.location.search);
             const accessToken = urlParams.get('access_token');
-            const refreshToken = urlParams.get('refresh_token');
-            const type = urlParams.get('type');
+            console.log('Confirmation token:', accessToken); // Debug log
 
-            if (type === 'signup' && accessToken && refreshToken) {
-                const { error } = await supabase.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken
+            if (accessToken) {
+                const { error } = await supabase.auth.verifyOtp({
+                    token: accessToken,
+                    type: 'signup'
                 });
 
                 if (error) {
+                    console.error('Confirmation error:', error.message);
                     document.getElementById('confirmation-message').innerHTML = `
                         <p>Error confirming email: ${error.message}</p>
                         <p><a href="index.html">Return to Login</a></p>
                     `;
-                    console.error('Confirmation error:', error.message);
                     return;
                 }
 
@@ -44,7 +43,9 @@
                     <p>Email confirmed successfully! You can now log in.</p>
                     <p><a href="index.html">Return to Login</a></p>
                 `;
+                setTimeout(() => { window.location.href = 'index.html'; }, 2000);
             } else {
+                console.error('No confirmation token found');
                 document.getElementById('confirmation-message').innerHTML = `
                     <p>Invalid or missing confirmation link.</p>
                     <p><a href="index.html">Return to Login</a></p>
