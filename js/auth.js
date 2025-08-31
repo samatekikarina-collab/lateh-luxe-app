@@ -9,14 +9,14 @@ export async function checkAuth() {
   }
   const { data, error: userError } = await supabase
     .from('users')
-    .select('role')
+    .select('role, username, phone_number')
     .eq('id', user.id)
     .single();
   if (userError || !data) {
-    console.error('Error fetching user role:', userError?.message);
+    console.error('Error fetching user data:', userError?.message);
     return null;
   }
-  return { ...user, role: data.role };
+  return { ...user, ...data };
 }
 
 document.getElementById('login')?.addEventListener('submit', async (e) => {
@@ -46,40 +46,75 @@ document.getElementById('login')?.addEventListener('submit', async (e) => {
 
 document.getElementById('signup')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const username = document.getElementById('signup-username').value;
   const email = document.getElementById('signup-email').value;
+  const phone_number = document.getElementById('signup-phone').value;
   const password = document.getElementById('signup-password').value;
   
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { role: 'user' } // Updated to 'user' to match constraint
-    }
-  });
-  
-  if (error) {
-    console.error('Signup error:', error.message);
-    alert('Signup failed: ' + error.message);
-    return;
-  }
-  
-  if (data.user) {
-    const { error: insertError } = await supabase.from('users').insert({
-      id: data.user.id,
-      email,
-      role: 'user' // Updated to 'user' to match constraint
-    });
+  try {
+    // Check for existing email or username
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .or(`email.eq.${email},username.eq.${username}`)
+      .maybeSingle();
     
-    if (insertError) {
-      console.error('Error saving user:', insertError.message, insertError.details);
-      alert('Error saving user: ' + insertError.message);
+    if (checkError) {
+      console.error('Error checking existing user:', checkError.message);
+      alert('Error checking user: ' + checkError.message);
       return;
     }
     
-    alert('Signup successful! Please check your email to confirm.');
-    window.location.href = 'index.html';
-  } else {
-    alert('Signup failed: No user data returned.');
+    if (existingUser) {
+      alert('Email or username already exists. Please use different ones.');
+      return;
+    }
+    
+    console.log('Attempting signup with email:', email); // Debug log
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username, phone_number, role: 'user' },
+        emailRedirectTo: 'https://samatekikarina-collab.github.io/lateh-luxe-app/confirm.html'
+      }
+    });
+    
+    if (error) {
+      console.error('Signup error:', error.message);
+      alert('Signup failed: ' + error.message);
+      return;
+    }
+    
+    if (data.user) {
+      console.log('User created with ID:', data.user.id); // Debug log
+      await new Promise(resolve => setTimeout(resolve, 3000)); // 3s delay
+      
+      const { error: insertError } = await supabase.from('users').insert([
+        {
+          id: data.user.id,
+          email,
+          username,
+          phone_number: phone_number || null,
+          role: 'user'
+        }
+      ]);
+      
+      if (insertError) {
+        console.error('Error adding user:', insertError.message, insertError.details);
+        alert('Error adding user: ' + insertError.message);
+        return;
+      }
+      
+      alert('Signup successful! Please check your email to confirm.');
+      window.location.href = 'index.html';
+    } else {
+      console.error('No user data returned');
+      alert('Signup failed: No user data returned.');
+    }
+  } catch (err) {
+    console.error('Unexpected error during signup:', err);
+    alert('Unexpected error during signup: ' + err.message);
   }
 });
 
@@ -91,8 +126,9 @@ document.getElementById('forgot-password')?.addEventListener('click', async (e) 
     return;
   }
   
+  console.log('Sending password reset for email:', email); // Debug log
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'http://localhost:3000/reset-password.html' // Update with your deployed URL
+    redirectTo: 'https://samatekikarina-collab.github.io/lateh-luxe-app/reset-password.html'
   });
   
   if (error) {
@@ -102,21 +138,6 @@ document.getElementById('forgot-password')?.addEventListener('click', async (e) 
   }
   
   alert('Password reset email sent! Check your inbox.');
-});
-
-document.getElementById('reset-password')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const newPassword = document.getElementById('new-password').value;
-  
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) {
-    console.error('Password update error:', error.message);
-    alert('Error resetting password: ' + error.message);
-    return;
-  }
-  
-  alert('Password reset successful! Please log in.');
-  window.location.href = 'index.html';
 });
 
 document.getElementById('logout')?.addEventListener('click', async (e) => {
