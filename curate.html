@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lateh Luxe - Curate Your Package</title>
+    <title>Lateh Luxe - Curate</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -34,38 +34,34 @@
                     <input type="text" id="package-name" required>
                 </div>
                 <div class="form-group">
-                    <label for="package-budget">Budget (₦, optional)</label>
-                    <input type="number" id="package-budget" min="0" step="0.01">
+                    <label for="package-budget">Budget (₦, Optional)</label>
+                    <input type="number" id="package-budget" step="0.01">
                 </div>
-                <button type="submit">Next</button>
+                <div class="form-group">
+                    <button type="submit">Start Curating</button>
+                </div>
             </form>
-        </section>
-        <section id="package-details" class="hidden">
-            <p id="package-name-display"></p>
-            <p id="package-budget-display"></p>
-        </section>
-        <section id="category-header" class="hidden">
-            <a href="#" class="back-button">←</a>
-            <img id="category-image" class="category-image">
-            <h2 id="category-name"></h2>
         </section>
         <section id="categories-section" class="hidden">
             <h2>Categories</h2>
-            <div id="categories-grid"></div>
+            <div id="categories-grid" class="categories-grid"></div>
+        </section>
+        <section id="category-header" class="hidden">
+            <a href="#" class="back-button">←</a>
+            <img id="category-image" class="category-image" src="" alt="Category Image">
+            <h2 id="category-name"></h2>
         </section>
         <section id="items-section" class="hidden">
             <h2>Items</h2>
             <div id="items-grid" class="items-grid"></div>
         </section>
-        <div id="selected-items" class="selected-items-container hidden">
-            <h3>Selected Items</h3>
+        <section id="selected-items" class="selected-items-container hidden">
+            <h2>Selected Items</h2>
             <ul id="selected-items-list"></ul>
             <p id="total-price">Total: ₦0.00</p>
-            <button id="add-to-cart" class="hidden">Add to Cart</button>
-        </div>
-        <div id="total-shortcut" class="total-shortcut hidden">
-            <span id="shortcut-total">₦0.00</span>
-        </div>
+        </section>
+        <button id="add-to-cart" class="hidden">Add to Cart</button>
+        <div id="total-shortcut" class="total-shortcut hidden">₦0.00</div>
     </main>
     <script type="module" src="js/curate.js"></script>
     <script type="module" src="js/auth.js"></script>
@@ -73,7 +69,7 @@
         document.querySelector('.hamburger').addEventListener('click', () => {
             document.getElementById('hamburger-menu').classList.toggle('active');
         });
-        
+
         document.getElementById('logout-mobile')?.addEventListener('click', () => {
             document.getElementById('logout').click();
         });
