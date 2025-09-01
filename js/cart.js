@@ -1,8 +1,7 @@
-// js/cart.js - Fixed total calculation to be async, display package details with items, verify payment fetch user
 import { supabase } from './supabase.js';
 import { checkAuth } from './auth.js';
 
-async function loadCart() {
+document.addEventListener('DOMContentLoaded', async () => {
   const userData = await checkAuth();
   if (!userData) {
     alert('You must be logged in to view your cart.');
@@ -10,89 +9,128 @@ async function loadCart() {
     return;
   }
   
-  const { data: cart, error } = await supabase.from('cart').select('*').eq('user_id', userData.id).order('created_at', { ascending: false });
-  if (error) {
-    console.error('Error loading cart:', error.message);
-    alert('Error loading cart: ' + error.message);
-    return;
-  }
+  await loadCartItems(userData);
   
-  const cartItems = document.getElementById('cart-items');
-  cartItems.innerHTML = '';
-  let total = 0;
-  for (const item of cart) {
-    const packageItems = [];
-    if (item.items && item.items.length) {
-      const { data: customItems } = await supabase.from('items').select('name, price').in('id', item.items);
-      packageItems.push(...(customItems || []));
-    }
-    if (item.curated_items && item.curated_items.length) {
-      const { data: curatedItems } = await supabase.from('curated_items').select('name, price').in('id', item.curated_items);
-      packageItems.push(...(curatedItems || []));
-    }
-    total += item.total_price || 0;
-    cartItems.innerHTML += `
-      <div class="cart-item">
-          <h3>${item.package_name}</h3>
-          <p>Budget: ₦${item.budget ? item.budget.toLocaleString('en-NG') : 'No budget'}</p>
-          <ul>
-              ${packageItems.map(pi => `<li>${pi.name} - ₦${pi.price.toLocaleString('en-NG')}</li>`).join('')}
-          </ul>
-      </div>
-  `;
-  }
-  document.getElementById('total-price').textContent = `Total: ₦${total.toLocaleString('en-NG')}`;
-}
-
-document.getElementById('checkout')?.addEventListener('click', async () => {
-  const userData = await checkAuth();
-  const total = parseFloat(document.getElementById('total-price').textContent.replace('Total: ₦', '').replace(/,/g, ''));
-  
-  const handler = PaystackPop.setup({
-    key: 'pk_test_xxxxxxxxxx', // Replace with your Paystack public key
-    email: userData.email,
-    amount: total * 100, // in kobo
-    currency: 'NGN',
-    ref: '' + Math.floor((Math.random() * 1000000000) + 1),
-    callback: function(response) {
-      verifyPayment(response.reference);
-    },
-    onClose: function() {
-      alert('Payment cancelled');
-    }
+  document.getElementById('logout').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('user');
+    window.location.href = 'index.html';
   });
-  handler.openIframe();
 });
 
-async function verifyPayment(reference) {
-  // Assuming verification is successful for demo; in production, call Paystack API
-  console.log('Verify payment with ref:', reference);
-  // Mock success
-  const userData = await checkAuth();
-  const { data: cart, error } = await supabase.from('cart').select('*').eq('user_id', userData.id);
-  if (error) {
-    console.error('Error fetching cart:', error.message);
-    alert('Error fetching cart: ' + error.message);
-    return;
+async function loadCartItems(userData) {
+  try {
+    const { data: carts, error } = await supabase
+      .from('cart')
+      .select('id, package_name, budget, items, total_price, status, created_at')
+      .eq('user_id', userData.id)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error loading cart items:', error.message);
+      alert('Error loading cart items: ' + error.message);
+      return;
+    }
+    
+    const itemIds = [...new Set(carts.flatMap(cart => cart.items.map(item => String(item.id))))];
+    const { data: items, error: itemsError } = await supabase
+      .from('items')
+      .select('id, name, price, quantifiable')
+      .in('id', itemIds);
+    
+    if (itemsError) {
+      console.error('Error fetching item details:', itemsError.message);
+      alert('Error fetching item details: ' + itemsError.message);
+      return;
+    }
+    
+    const cartItemsContainer = document.getElementById('cart-items');
+    cartItemsContainer.innerHTML = '';
+    
+    carts.forEach(cart => {
+      const cartItems = cart.items.map(cartItem => {
+        const item = items.find(i => String(i.id) === String(cartItem.id));
+        if (!item) return '';
+        const quantity = cartItem.quantity || 1;
+        return `
+                    <li>
+                        ${item.name} ${item.quantifiable ? `(x${quantity})` : ''}: ₦${(Number(item.price) * quantity).toFixed(2)}
+                    </li>
+                `;
+      }).join('');
+      
+      const isPending = cart.status === 'pending';
+      const cartElement = document.createElement('div');
+      cartElement.classList.add('cart-item');
+      cartElement.innerHTML = `
+                <h3>${cart.package_name || 'Custom Package'}</h3>
+                <p>Budget: ${cart.budget ? `₦${cart.budget.toFixed(2)}` : 'Not specified'}</p>
+                <p>Subtotal: ₦${(cart.total_price - 10000).toFixed(2)}</p>
+                <p>Packaging Fee: ₦10000.00</p>
+                <p>Total: ₦${cart.total_price.toFixed(2)}</p>
+                <p>Status: ${cart.status}</p>
+                <ul>${cartItems}</ul>
+                <button class="send-reminder" data-cart-id="${cart.id}" ${!isPending ? 'disabled' : ''}>Send a Reminder</button>
+            `;
+      cartItemsContainer.appendChild(cartElement);
+    });
+    
+    document.querySelectorAll('.send-reminder').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (button.disabled) return;
+        
+        const cartId = button.dataset.cartId;
+        const cart = carts.find(c => c.id === cartId);
+        if (!cart) {
+          alert('Cart not found.');
+          return;
+        }
+        
+        try {
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('items')
+            .select('id, name, price, quantifiable')
+            .in('id', cart.items.map(item => String(item.id)));
+          
+          if (itemsError) {
+            console.error('Error fetching items for reminder:', itemsError.message);
+            alert('Error fetching items for reminder: ' + itemsError.message);
+            return;
+          }
+          
+          const message = generateWhatsAppMessage(cart, itemsData, userData.email);
+          const encodedMessage = encodeURIComponent(message);
+          const phoneNumber = '+2349122834983';
+          const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+          window.open(whatsappUrl, '_blank');
+        } catch (error) {
+          console.error('Error generating WhatsApp message:', error.message);
+          alert('Error generating WhatsApp message: ' + error.message);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Unexpected error loading cart:', error.message);
+    alert('Unexpected error loading cart: ' + error.message);
   }
-  
-  const { error: insertError } = await supabase.from('purchases').insert(cart.map(c => ({ ...c, payment_ref: reference })));
-  if (insertError) {
-    console.error('Error moving to purchases:', insertError.message);
-    alert('Error moving to purchases: ' + insertError.message);
-    return;
-  }
-  
-  const { error: deleteError } = await supabase.from('cart').delete().eq('user_id', userData.id);
-  if (deleteError) {
-    console.error('Error clearing cart:', deleteError.message);
-  }
-  alert('Payment successful! Package moved to purchases.');
-  window.location.href = 'profile.html';
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadCart();
-  const isDarkMode = localStorage.getItem('darkMode') === 'true';
-  document.body.classList.toggle('dark-mode', isDarkMode);
-});
+function generateWhatsAppMessage(cart, items, username) {
+  const itemsList = cart.items.map(cartItem => {
+    const item = items.find(i => String(i.id) === String(cartItem.id));
+    if (!item) return '';
+    const quantity = cartItem.quantity || 1;
+    return `- ${item.name} ${item.quantifiable ? `(x${quantity})` : ''}: ₦${(Number(item.price) * quantity).toFixed(2)}`;
+  }).filter(item => item).join('\n');
+  
+  return `Reminder: Order from ${username}
+Package Name: ${cart.package_name || 'Custom Package'}
+Items:
+${itemsList}
+Subtotal: ₦${(cart.total_price - 10000).toFixed(2)}
+Packaging Fee: ₦10000.00
+Total: ₦${cart.total_price.toFixed(2)}
+Status: ${cart.status}
+Budget: ${cart.budget ? `₦${cart.budget.toFixed(2)}` : 'Not specified'}
+Please confirm payment details.`;
+}
