@@ -1,4 +1,3 @@
-// js/admin.js - No major changes, added dark mode load
 import { supabase } from './supabase.js';
 import { checkAuth } from './auth.js';
 
@@ -7,9 +6,19 @@ let currentFileInput;
 let croppedFile;
 
 async function uploadImage(file) {
-    if (!file) return null;
-    const fileExt = file.name.split('.').pop();
+    if (!file) {
+        console.log('No file provided for upload');
+        return null;
+    }
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+    if (!validExtensions.includes(fileExt)) {
+        console.error('Invalid file type:', fileExt);
+        alert('Please upload a valid image file (jpg, jpeg, png, gif).');
+        return null;
+    }
     const fileName = `item-images/${Date.now()}.${fileExt}`;
+    console.log('Uploading file:', fileName);
     const { error } = await supabase.storage.from('item-images').upload(fileName, file);
     if (error) {
         console.error('Error uploading image:', error.message);
@@ -17,40 +26,80 @@ async function uploadImage(file) {
         return null;
     }
     const { data } = supabase.storage.from('item-images').getPublicUrl(fileName);
+    console.log('Uploaded image URL:', data.publicUrl);
     return data.publicUrl;
 }
 
 function initCropper(file, inputId) {
+    if (!file) {
+        console.error('No file selected for cropping');
+        alert('Please select an image to crop.');
+        return;
+    }
     const modal = document.getElementById('cropper-modal');
     const image = document.getElementById('cropper-image');
-    const aspectRatio = inputId.includes('category') ? 1 : 4 / 3; // 1:1 for categories, 4:3 for items
+    if (!modal || !image) {
+        console.error('Cropper modal or image element not found');
+        alert('Error: Cropper interface not loaded properly.');
+        return;
+    }
+    const aspectRatio = inputId.includes('category') ? 1 : 4 / 3;
     currentFileInput = inputId;
 
     const reader = new FileReader();
     reader.onload = (e) => {
         image.src = e.target.result;
         modal.classList.add('active');
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(image, {
-            aspectRatio,
-            viewMode: 1,
-            autoCropArea: 0.8,
-            responsive: true,
-            crop(event) {
-                // Optional: Display crop coordinates if needed
-            },
-        });
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        try {
+            cropper = new Cropper(image, {
+                aspectRatio,
+                viewMode: 1,
+                autoCropArea: 0.8,
+                responsive: true,
+                crop(event) {
+                    console.log('Cropper coordinates:', event.detail);
+                },
+            });
+            console.log('Cropper initialized for:', inputId);
+        } catch (err) {
+            console.error('Error initializing Cropper:', err);
+            alert('Error initializing image cropper.');
+            modal.classList.remove('active');
+        }
+    };
+    reader.onerror = (err) => {
+        console.error('Error reading file:', err);
+        alert('Error reading image file.');
     };
     reader.readAsDataURL(file);
 }
 
 async function saveCroppedImage() {
-    if (!cropper) return null;
+    if (!cropper) {
+        console.error('Cropper not initialized');
+        alert('Error: Cropper not initialized.');
+        return null;
+    }
     const canvas = cropper.getCroppedCanvas();
+    if (!canvas) {
+        console.error('Failed to get cropped canvas');
+        alert('Error: Could not crop image.');
+        return null;
+    }
     return new Promise((resolve) => {
         canvas.toBlob(async (blob) => {
-            const file = new File([blob], currentFileInput + '.png', { type: 'image/png' });
+            if (!blob) {
+                console.error('Failed to create blob from canvas');
+                alert('Error: Could not process cropped image.');
+                resolve(null);
+            }
+            const file = new File([blob], `${currentFileInput}.png`, { type: 'image/png' });
             croppedFile = file;
+            console.log('Cropped image ready:', file.name);
             resolve(file);
         }, 'image/png');
     });
@@ -181,6 +230,11 @@ document.getElementById('category-form')?.addEventListener('submit', async (e) =
     const file = croppedFile || document.getElementById('category-image').files[0];
     const image = file ? await uploadImage(file) : null;
     
+    if (!image && file) {
+        alert('Failed to upload image. Please try again.');
+        return;
+    }
+    
     const { error } = await supabase.from('custom_categories').insert({ name, image });
     if (error) {
         console.error('Error adding category:', error.message);
@@ -198,6 +252,11 @@ document.getElementById('curated-category-form')?.addEventListener('submit', asy
     const name = document.getElementById('curated-category-name').value;
     const file = croppedFile || document.getElementById('curated-category-image').files[0];
     const image = file ? await uploadImage(file) : null;
+    
+    if (!image && file) {
+        alert('Failed to upload image. Please try again.');
+        return;
+    }
     
     const { error } = await supabase.from('curated_categories').insert({ name, image });
     if (error) {
@@ -217,10 +276,16 @@ document.getElementById('item-form')?.addEventListener('submit', async (e) => {
     const name = document.getElementById('item-name').value;
     const price = parseFloat(document.getElementById('item-price').value);
     const description = document.getElementById('item-description').value || null;
+    const quantifiable = document.getElementById('item-quantifiable').checked;
     const file = croppedFile || document.getElementById('item-image').files[0];
     const image = file ? await uploadImage(file) : null;
     
-    const { error } = await supabase.from('items').insert({ category_id, name, price, description, image });
+    if (!image && file) {
+        alert('Failed to upload image. Please try again.');
+        return;
+    }
+    
+    const { error } = await supabase.from('items').insert({ category_id, name, price, description, image, quantifiable });
     if (error) {
         console.error('Error adding item:', error.message);
         alert('Error adding item: ' + error.message);
@@ -238,10 +303,16 @@ document.getElementById('curated-item-form')?.addEventListener('submit', async (
     const name = document.getElementById('curated-item-name').value;
     const price = parseFloat(document.getElementById('curated-item-price').value);
     const description = document.getElementById('curated-item-description').value || null;
+    const quantifiable = document.getElementById('curated-item-quantifiable').checked;
     const file = croppedFile || document.getElementById('curated-item-image').files[0];
     const image = file ? await uploadImage(file) : null;
     
-    const { error } = await supabase.from('curated_items').insert({ category_id, name, price, description, image });
+    if (!image && file) {
+        alert('Failed to upload image. Please try again.');
+        return;
+    }
+    
+    const { error } = await supabase.from('curated_items').insert({ category_id, name, price, description, image, quantifiable });
     if (error) {
         console.error('Error adding curated item:', error.message);
         alert('Error adding curated item: ' + error.message);
@@ -280,7 +351,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadCategories();
     loadCuratedCategories();
 
-    // Initialize cropper for all file inputs
     const fileInputs = [
         'category-image',
         'curated-category-image',
@@ -296,7 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    document.getElementById('cropper-save').addEventListener('click', async () => {
+    document.getElementById('cropper-save')?.addEventListener('click', async () => {
         const file = await saveCroppedImage();
         if (file) {
             croppedFile = file;
@@ -308,7 +378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    document.getElementById('cropper-cancel').addEventListener('click', () => {
+    document.getElementById('cropper-cancel')?.addEventListener('click', () => {
         croppedFile = null;
         document.getElementById(currentFileInput).value = '';
         document.getElementById('cropper-modal').classList.remove('active');
@@ -329,6 +399,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const description = inputs[2].value || null;
             const file = croppedFile || inputs[3].files[0];
             const image = file ? await uploadImage(file) : inputs[3].dataset.currentImage || null;
+            
+            if (!image && file) {
+                alert('Failed to upload image. Please try again.');
+                return;
+            }
             
             const { error } = await supabase.from('items').update({ name, price, description, image }).eq('id', itemId);
             if (error) {
@@ -354,6 +429,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const file = croppedFile || inputs[3].files[0];
             const image = file ? await uploadImage(file) : inputs[3].dataset.currentImage || null;
             
+            if (!image && file) {
+                alert('Failed to upload image. Please try again.');
+                return;
+            }
+            
             const { error } = await supabase.from('curated_items').update({ name, price, description, image }).eq('id', itemId);
             if (error) {
                 console.error('Error updating curated item:', error.message);
@@ -370,4 +450,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.classList.toggle('dark-mode', isDarkMode);
 });
 
-window.deleteItem = deleteItem; // Expose deleteItem globally for onclick
+window.deleteItem = deleteItem;
