@@ -1,4 +1,3 @@
-// js/profile.js - Fixed loadPurchases to fetch related items separately
 import { supabase } from './supabase.js';
 import { checkAuth } from './auth.js';
 
@@ -11,18 +10,24 @@ async function loadPurchases() {
     for (const purchase of purchases) {
         const items = [];
         if (purchase.items && purchase.items.length) {
-            const { data: customItems } = await supabase.from('items').select('name, price').in('id', purchase.items);
-            items.push(...(customItems || []));
+            const { data: customItems } = await supabase.from('items').select('id, name, price, quantifiable').in('id', purchase.items.map(i => i.id));
+            items.push(...customItems.map(ci => ({
+                ...ci,
+                quantity: purchase.items.find(i => i.id === ci.id).quantity
+            })));
         }
         if (purchase.curated_items && purchase.curated_items.length) {
-            const { data: curatedItems } = await supabase.from('curated_items').select('name, price').in('id', purchase.curated_items);
-            items.push(...(curatedItems || []));
+            const { data: curatedItems } = await supabase.from('curated_items').select('id, name, price, quantifiable').in('id', purchase.curated_items.map(i => i.id));
+            items.push(...curatedItems.map(ci => ({
+                ...ci,
+                quantity: purchase.curated_items.find(i => i.id === ci.id).quantity
+            })));
         }
         list.innerHTML += `
             <li>
                 ${purchase.package_name} (${purchase.budget ? '₦' + purchase.budget.toFixed(2) : 'No budget'})
                 <ul>
-                    ${items.map(item => `<li>${item.name} - ₦${item.price.toFixed(2)}</li>`).join('')}
+                    ${items.map(item => `<li>${item.name} ${item.quantifiable ? `(x${item.quantity})` : ''} - ₦${(item.price * item.quantity).toFixed(2)}</li>`).join('')}
                 </ul>
             </li>
         `;
@@ -52,7 +57,6 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
     if (updateError) {
         alert('Error updating profile: ' + updateError.message);
     } else {
-        // Update email in auth.users if changed
         if (email !== user.email) {
             const { error: authError } = await supabase.auth.updateUser({ email });
             if (authError) alert('Error updating auth email: ' + authError.message);
