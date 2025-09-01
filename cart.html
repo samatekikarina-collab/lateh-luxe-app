@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lateh Luxe - Cart</title>
+    <title>My Cart - Lateh Luxe</title>
     <link rel="stylesheet" href="css/styles.css">
-    <script src="https://js.paystack.co/v1/inline.js"></script>
 </head>
 <body>
     <header>
@@ -14,6 +13,7 @@
             <a href="customer.html">Dashboard</a>
             <a href="curate.html">Curate</a>
             <a href="boxes.html">View Boxes</a>
+            <a href="cart.html" class="active">Cart</a>
             <a href="profile.html">Profile</a>
             <button id="logout">Logout</button>
         </nav>
@@ -22,23 +22,23 @@
             <a href="customer.html">Dashboard</a>
             <a href="curate.html">Curate</a>
             <a href="boxes.html">View Boxes</a>
+            <a href="cart.html">Cart</a>
             <a href="profile.html">Profile</a>
             <a id="logout-mobile">Logout</a>
         </div>
     </header>
     <main>
-        <h1>Your Cart</h1>
-        <div id="cart-items" class="items-grid"></div>
-        <p id="total-price">Total: ₦0.00</p>
-        <button id="checkout">Checkout</button>
+        <section id="cart-section">
+            <h2>My Cart</h2>
+            <div id="cart-items"></div>
+        </section>
     </main>
     <script type="module" src="js/cart.js"></script>
-    <script type="module" src="js/auth.js"></script>
     <script>
         document.querySelector('.hamburger').addEventListener('click', () => {
             document.getElementById('hamburger-menu').classList.toggle('active');
         });
-        
+
         document.getElementById('logout-mobile')?.addEventListener('click', () => {
             document.getElementById('logout').click();
         });
