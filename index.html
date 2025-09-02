@@ -8,10 +8,17 @@
 </head>
 <body>
     <header>
-        <div class="logo">Lateh Luxe</div>
+        <div class="logo">
+            <img src="images/logo.png" alt="Lateh Luxe Logo">
+            <span>Lateh Luxe</span>
+        </div>
     </header>
     <main>
-        <h1>Welcome to Lateh Luxe</h1>
+        <section class="hero-section">
+            <img src="images/logo.png" alt="Lateh Luxe Logo">
+            <h1>Welcome to Lateh Luxe</h1>
+            <p>Curate your perfect luxury gift box with our premium selection.</p>
+        </section>
         <div class="auth-container">
             <div id="login-form">
                 <h2>Login</h2>
@@ -56,23 +63,18 @@
     </main>
     <script type="module" src="js/auth.js"></script>
     <script>
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-        }
-        
         document.getElementById('show-signup')?.addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('login-form').classList.add('hidden');
             document.getElementById('signup-form').classList.remove('hidden');
         });
-        
+
         document.getElementById('show-login')?.addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('signup-form').classList.add('hidden');
             document.getElementById('login-form').classList.remove('hidden');
         });
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             const isDarkMode = localStorage.getItem('darkMode') === 'true';
             document.body.classList.toggle('dark-mode', isDarkMode);
