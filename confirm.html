@@ -8,7 +8,10 @@
 </head>
 <body>
     <header>
-        <div class="logo">Lateh Luxe</div>
+        <div class="logo">
+            <img src="images/logo.png" alt="Lateh Luxe Logo">
+            <span>Lateh Luxe</span>
+        </div>
     </header>
     <main>
         <h1>Email Confirmation</h1>
@@ -20,34 +23,48 @@
         import { supabase } from './js/supabase.js';
 
         async function handleConfirmation() {
+            // Check both query params and URL fragment
             const urlParams = new URLSearchParams(window.location.search);
-            const accessToken = urlParams.get('access_token');
+            const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+            const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
             console.log('Confirmation token:', accessToken); // Debug log
 
-            if (accessToken) {
-                const { error } = await supabase.auth.verifyOtp({
+            const messageDiv = document.getElementById('confirmation-message');
+
+            if (!accessToken) {
+                console.error('No confirmation token found in URL');
+                messageDiv.innerHTML = `
+                    <p>Invalid or missing confirmation link.</p>
+                    <p>Please check your email or <a href="index.html">return to login</a>.</p>
+                `;
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.verifyOtp({
                     token: accessToken,
                     type: 'signup'
                 });
 
                 if (error) {
                     console.error('Confirmation error:', error.message);
-                    document.getElementById('confirmation-message').innerHTML = `
+                    messageDiv.innerHTML = `
                         <p>Error confirming email: ${error.message}</p>
                         <p><a href="index.html">Return to Login</a></p>
                     `;
                     return;
                 }
 
-                document.getElementById('confirmation-message').innerHTML = `
+                console.log('Email confirmed:', data);
+                messageDiv.innerHTML = `
                     <p>Email confirmed successfully! You can now log in.</p>
-                    <p><a href="index.html">Return to Login</a></p>
+                    <p>Redirecting to login...</p>
                 `;
                 setTimeout(() => { window.location.href = 'index.html'; }, 2000);
-            } else {
-                console.error('No confirmation token found');
-                document.getElementById('confirmation-message').innerHTML = `
-                    <p>Invalid or missing confirmation link.</p>
+            } catch (err) {
+                console.error('Unexpected error during confirmation:', err);
+                messageDiv.innerHTML = `
+                    <p>Unexpected error: ${err.message}</p>
                     <p><a href="index.html">Return to Login</a></p>
                 `;
             }
