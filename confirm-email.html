@@ -8,28 +8,71 @@
 </head>
 <body>
     <header>
-        <div class="logo">Lateh Luxe</div>
-        <nav>
-            <a href="index.html">Login</a>
-        </nav>
-        <div class="hamburger">☰</div>
-        <div id="hamburger-menu">
-            <a href="index.html">Login</a>
+        <div class="logo">
+            <img src="images/logo.png" alt="Lateh Luxe Logo">
+            <span>Lateh Luxe</span>
         </div>
     </header>
     <main>
-        <h1>Confirm Your Email</h1>
-        <p>Please check your email to confirm your account, then <a href="index.html">log in</a>.</p>
+        <h1>Email Confirmation</h1>
+        <div id="confirmation-message">
+            <p>Confirming your email...</p>
+        </div>
     </main>
-    <script type="module" src="js/auth.js"></script>
-    <script>
-        document.querySelector('.hamburger').addEventListener('click', () => {
-            document.getElementById('hamburger-menu').classList.toggle('active');
-        });
-        
+    <script type="module">
+        import { supabase } from './js/supabase.js';
+
+        async function handleConfirmation() {
+            // Extract token from both query params and URL fragment
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+            const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
+            const messageDiv = document.getElementById('confirmation-message');
+
+            console.log('Confirmation token:', accessToken); // Debug log
+
+            if (!accessToken) {
+                console.error('No confirmation token found in URL');
+                messageDiv.innerHTML = `
+                    <p>Invalid or missing confirmation link.</p>
+                    <p>Please check your email or <a href="index.html">return to login</a>.</p>
+                `;
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.verifyOtp({
+                    token: accessToken,
+                    type: 'signup'
+                });
+
+                if (error) {
+                    console.error('Confirmation error:', error.message);
+                    messageDiv.innerHTML = `
+                        <p>Error confirming email: ${error.message}</p>
+                        <p><a href="index.html">Return to Login</a></p>
+                    `;
+                    return;
+                }
+
+                console.log('Email confirmation successful:', data);
+                messageDiv.innerHTML = `
+                    <p>Email confirmed successfully! You can now log in.</p>
+                    <p>Redirecting to login in 3 seconds...</p>
+                `;
+                setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+            } catch (err) {
+                console.error('Unexpected error during email confirmation:', err.message);
+                messageDiv.innerHTML = `
+                    <p>Unexpected error: ${err.message}</p>
+                    <p><a href="index.html">Return to Login</a></p>
+                `;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            const isDarkMode = localStorage.getItem('darkMode') === 'true';
-            document.body.classList.toggle('dark-mode', isDarkMode);
+            console.log('Confirm-email page loaded');
+            handleConfirmation();
         });
     </script>
 </body>
