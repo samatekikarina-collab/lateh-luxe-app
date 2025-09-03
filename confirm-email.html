@@ -23,15 +23,28 @@
         import { supabase } from './js/supabase.js';
 
         async function handleConfirmation() {
-            console.log('Full URL:', window.location.href);
+            // Normalize URL to remove double slashes
+            const normalizedUrl = window.location.href.replace(/\/+/g, '/');
+            console.log('Normalized URL:', normalizedUrl);
+
             const urlParams = new URLSearchParams(window.location.search);
             const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
             const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
+            const type = hashParams.get('type') || urlParams.get('type') || 'signup';
             const messageDiv = document.getElementById('confirmation-message');
 
             console.log('Query params:', Object.fromEntries(urlParams));
             console.log('Hash params:', Object.fromEntries(hashParams));
             console.log('Confirmation token:', accessToken || 'None found');
+            console.log('Verification type:', type);
+
+            // Check for unexpected parameters
+            if (urlParams.has('email') || urlParams.has('phone') || hashParams.has('email') || hashParams.has('phone')) {
+                console.warn('Unexpected parameters detected in URL:', {
+                    query: Object.fromEntries(urlParams),
+                    hash: Object.fromEntries(hashParams)
+                });
+            }
 
             if (!accessToken) {
                 console.error('No confirmation token found in URL');
@@ -42,11 +55,21 @@
                 return;
             }
 
+            // Validate token format (basic check for length)
+            if (accessToken.length < 50) {
+                console.error('Token is too short, likely invalid:', accessToken);
+                messageDiv.innerHTML = `
+                    <p>Invalid confirmation token. It appears to be malformed.</p>
+                    <p>Please request a new confirmation email or <a href="index.html">return to login</a>.</p>
+                `;
+                return;
+            }
+
             try {
-                console.log('Attempting to verify OTP with token:', accessToken);
+                console.log('Attempting to verify OTP with token:', accessToken, 'and type:', type);
                 const { data, error } = await supabase.auth.verifyOtp({
                     token: accessToken,
-                    type: 'signup'
+                    type: type === 'invite' ? 'invite' : 'signup'
                 });
 
                 if (error) {
