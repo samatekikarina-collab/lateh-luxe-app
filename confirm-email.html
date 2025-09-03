@@ -16,92 +16,66 @@
     <main>
         <h1>Email Confirmation</h1>
         <div id="confirmation-message">
-            <p>Confirming your email...</p>
+            <p>Processing email confirmation...</p>
         </div>
     </main>
     <script type="module">
         import { supabase } from './js/supabase.js';
 
-        async function handleConfirmation() {
-            // Normalize URL to remove double slashes
-            const normalizedUrl = window.location.href.replace(/\/+/g, '/');
-            console.log('Normalized URL:', normalizedUrl);
-
+        async function handleConfirmationRedirect() {
+            const messageDiv = document.getElementById('confirmation-message');
             const urlParams = new URLSearchParams(window.location.search);
             const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-            const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
-            const type = hashParams.get('type') || urlParams.get('type') || 'signup';
-            const messageDiv = document.getElementById('confirmation-message');
 
-            console.log('Query params:', Object.fromEntries(urlParams));
-            console.log('Hash params:', Object.fromEntries(hashParams));
-            console.log('Confirmation token:', accessToken || 'None found');
-            console.log('Verification type:', type);
+            // The access_token and type=signup from the URL hash indicate a successful confirmation redirect from Supabase
+            const accessTokenInHash = hashParams.get('access_token');
+            const typeInHash = hashParams.get('type');
 
-            // Check for unexpected parameters
-            if (urlParams.has('email') || urlParams.has('phone') || hashParams.has('email') || hashParams.has('phone')) {
-                console.warn('Unexpected parameters detected in URL:', {
-                    query: Object.fromEntries(urlParams),
-                    hash: Object.fromEntries(hashParams)
-                });
-            }
+            if (accessTokenInHash && typeInHash === 'signup') {
+                console.log('Confirmation redirect detected via hash parameters.');
+                // At this point, Supabase has already handled the confirmation on the backend.
+                // The user's session should now be active in the browser.
 
-            if (!accessToken) {
-                console.error('No confirmation token found in URL');
-                messageDiv.innerHTML = `
-                    <p>Invalid or missing confirmation link.</p>
-                    <p>Please check your email or <a href="index.html">return to login</a>.</p>
-                `;
-                return;
-            }
+                try {
+                    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-            // Validate token format (basic check for length)
-            if (accessToken.length < 50) {
-                console.error('Token is too short, likely invalid:', accessToken);
-                messageDiv.innerHTML = `
-                    <p>Invalid confirmation token. It appears to be malformed.</p>
-                    <p>Please request a new confirmation email or <a href="index.html">return to login</a>.</p>
-                `;
-                return;
-            }
-
-            try {
-                console.log('Attempting to verify OTP with token:', accessToken, 'and type:', type);
-                const { data, error } = await supabase.auth.verifyOtp({
-                    token: accessToken,
-                    type: type === 'invite' ? 'invite' : 'signup'
-                });
-
-                if (error) {
-                    console.error('Confirmation error:', error.message);
+                    if (user && !userError) {
+                        console.log('User session found, email successfully confirmed.');
+                        messageDiv.innerHTML = `
+                            <p>Email confirmed successfully! You can now log in.</p>
+                            <p>Redirecting to login in 3 seconds...</p>
+                        `;
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 3000);
+                    } else {
+                        console.error('No active user session after confirmation redirect:', userError?.message);
+                        messageDiv.innerHTML = `
+                            <p>Email confirmation link processed, but no active session found. Please try logging in.</p>
+                            <p><a href="index.html">Return to Login</a></p>
+                        `;
+                    }
+                } catch (err) {
+                    console.error('Error checking user session:', err.message);
                     messageDiv.innerHTML = `
-                        <p>Error confirming email: ${error.message}</p>
+                        <p>An unexpected error occurred while verifying your session.</p>
                         <p><a href="index.html">Return to Login</a></p>
                     `;
-                    return;
                 }
-
-                console.log('Email confirmation successful:', data);
+            } else {
+                console.log('Not a direct Supabase confirmation redirect or missing parameters.');
+                // This branch handles cases where the page is loaded directly or without the expected hash params.
+                // It might be a manual visit or an expired/invalid link.
                 messageDiv.innerHTML = `
-                    <p>Email confirmed successfully! You can now log in.</p>
-                    <p>Redirecting to login in 3 seconds...</p>
-                `;
-                setTimeout(() => {
-                    console.log('Redirecting to index.html');
-                    window.location.href = 'index.html';
-                }, 3000);
-            } catch (err) {
-                console.error('Unexpected error during email confirmation:', err.message);
-                messageDiv.innerHTML = `
-                    <p>Unexpected error: ${err.message}</p>
-                    <p><a href="index.html">Return to Login</a></p>
+                    <p>Invalid or expired confirmation link.</p>
+                    <p>Please request a new confirmation email if needed or <a href="index.html">return to login</a>.</p>
                 `;
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Confirm-email page loaded at:', new Date().toISOString());
-            handleConfirmation();
+            handleConfirmationRedirect();
         });
     </script>
 </body>
