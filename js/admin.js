@@ -96,6 +96,7 @@ async function saveCroppedImage() {
                 console.error('Failed to create blob from canvas');
                 alert('Error: Could not process cropped image.');
                 resolve(null);
+                return;
             }
             const file = new File([blob], `${currentFileInput}.png`, { type: 'image/png' });
             croppedFile = file;
@@ -105,118 +106,390 @@ async function saveCroppedImage() {
     });
 }
 
-async function loadCategories() {
-    const { data: categories, error } = await supabase.from('custom_categories').select('id, name').order('name', { ascending: true });
+async function loadCustomCategories() {
+    const { data: categories, error } = await supabase.from('custom_categories').select('id, name, image').order('name', { ascending: true });
     if (error) {
-        console.error('Error loading categories:', error.message);
-        alert('Error loading categories: ' + error.message);
+        console.error('Error loading custom categories:', error.message);
+        alert('Error loading custom categories: ' + error.message);
         return;
     }
-    
+
     const itemCategorySelect = document.getElementById('item-category');
-    itemCategorySelect.innerHTML = '<option value="" disabled selected>Select a category</option>' + 
-        categories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
+    if (itemCategorySelect) {
+        itemCategorySelect.innerHTML = '<option value="" disabled selected>Select a category</option>' +
+            categories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
+    }
+
+    const categoriesList = document.getElementById('custom-categories-list');
+    if (categoriesList) {
+        categoriesList.innerHTML = categories.map(category => `
+            <div class="admin-category" data-id="${category.id}">
+                ${category.image ? `<img src="${category.image}" alt="${category.name}">` : '<p>No image</p>'}
+                <form class="edit-category-form" data-id="${category.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${category.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${category.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Category</button>
+                        <button type="button" class="delete-button" onclick="deleteCategory(${category.id}, 'custom_categories')">Delete Category</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
 }
 
 async function loadCuratedCategories() {
-    const { data: curatedCategories, error } = await supabase.from('curated_categories').select('id, name').order('name', { ascending: true });
+    const { data: curatedCategories, error } = await supabase.from('curated_categories').select('id, name, image').order('name', { ascending: true });
     if (error) {
         console.error('Error loading curated categories:', error.message);
         alert('Error loading curated categories: ' + error.message);
         return;
     }
-    
+
     const curatedItemCategorySelect = document.getElementById('curated-item-category');
-    curatedItemCategorySelect.innerHTML = '<option value="" disabled selected>Select a curated category</option>' + 
-        curatedCategories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
+    if (curatedItemCategorySelect) {
+        curatedItemCategorySelect.innerHTML = '<option value="" disabled selected>Select a curated category</option>' +
+            curatedCategories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
+    }
+
+    const curatedCategoriesList = document.getElementById('curated-categories-list');
+    if (curatedCategoriesList) {
+        curatedCategoriesList.innerHTML = curatedCategories.map(category => `
+            <div class="admin-category" data-id="${category.id}">
+                ${category.image ? `<img src="${category.image}" alt="${category.name}">` : '<p>No image</p>'}
+                <form class="edit-curated-category-form" data-id="${category.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${category.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${category.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Category</button>
+                        <button type="button" class="delete-button" onclick="deleteCategory(${category.id}, 'curated_categories')">Delete Category</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
 }
 
 async function loadCustomItems() {
-    const { data: items, error } = await supabase.from('items').select('id, name, price, description, image, category_id').order('name', { ascending: true });
+    const { data: items, error } = await supabase.from('items').select('id, name, price, description, image, category_id, quantifiable').order('name', { ascending: true });
     if (error) {
         console.error('Error loading custom items:', error.message);
         alert('Error loading custom items: ' + error.message);
         return;
     }
-    
+
     const itemsList = document.getElementById('custom-items-list');
-    itemsList.innerHTML = items.map(item => `
-        <div class="admin-item" data-id="${item.id}">
-            ${item.image ? `<img src="${item.image}" alt="${item.name}">` : ''}
-            <form class="edit-item-form" data-id="${item.id}">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" value="${item.name}" required>
-                </div>
-                <div class="form-group">
-                    <label>Price (₦)</label>
-                    <input type="number" value="${item.price}" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea>${item.description || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>Image</label>
-                    <input type="file" accept="image/*" data-current-image="${item.image || ''}">
-                </div>
-                <div class="form-group">
-                    <button type="submit">Update Item</button>
-                    <button type="button" class="delete-button" onclick="deleteItem(${item.id}, 'items')">Delete Item</button>
-                </div>
-            </form>
-        </div>
-    `).join('');
+    if (itemsList) {
+        itemsList.innerHTML = items.map(item => `
+            <div class="admin-item" data-id="${item.id}">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '<p>No image</p>'}
+                <form class="edit-item-form" data-id="${item.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${item.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₦)</label>
+                        <input type="number" value="${item.price}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea>${item.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${item.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantifiable</label>
+                        <input type="checkbox" ${item.quantifiable ? 'checked' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Item</button>
+                        <button type="button" class="delete-button" onclick="deleteItem(${item.id}, 'items')">Delete Item</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
 }
 
 async function loadCuratedItems() {
-    const { data: curatedItems, error } = await supabase.from('curated_items').select('id, name, price, description, image, category_id').order('name', { ascending: true });
+    const { data: curatedItems, error } = await supabase.from('curated_items').select('id, name, price, description, image, category_id, quantifiable').order('name', { ascending: true });
     if (error) {
         console.error('Error loading curated items:', error.message);
         alert('Error loading curated items: ' + error.message);
         return;
     }
-    
+
     const curatedItemsList = document.getElementById('curated-items-list');
-    curatedItemsList.innerHTML = curatedItems.map(item => `
-        <div class="admin-item" data-id="${item.id}">
-            ${item.image ? `<img src="${item.image}" alt="${item.name}">` : ''}
-            <form class="edit-curated-item-form" data-id="${item.id}">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" value="${item.name}" required>
-                </div>
-                <div class="form-group">
-                    <label>Price (₦)</label>
-                    <input type="number" value="${item.price}" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea>${item.description || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>Image</label>
-                    <input type="file" accept="image/*" data-current-image="${item.image || ''}">
-                </div>
-                <div class="form-group">
-                    <button type="submit">Update Item</button>
-                    <button type="button" class="delete-button" onclick="deleteItem(${item.id}, 'curated_items')">Delete Item</button>
-                </div>
-            </form>
-        </div>
-    `).join('');
+    if (curatedItemsList) {
+        curatedItemsList.innerHTML = curatedItems.map(item => `
+            <div class="admin-item" data-id="${item.id}">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '<p>No image</p>'}
+                <form class="edit-curated-item-form" data-id="${item.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${item.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₦)</label>
+                        <input type="number" value="${item.price}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea>${item.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${item.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantifiable</label>
+                        <input type="checkbox" ${item.quantifiable ? 'checked' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Item</button>
+                        <button type="button" class="delete-button" onclick="deleteItem(${item.id}, 'curated_items')">Delete Item</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
+}
+
+async function searchItemsAndCategories(query) {
+    query = query.trim().toLowerCase();
+    const resultsList = document.getElementById('search-results-list');
+    if (!resultsList) return;
+
+    resultsList.innerHTML = '';
+
+    if (!query) {
+        document.getElementById('search-results').classList.add('hidden');
+        return;
+    }
+
+    // Search custom categories
+    const { data: customCategories, error: customCatError } = await supabase
+        .from('custom_categories')
+        .select('id, name, image')
+        .ilike('name', `%${query}%`);
+    if (customCatError) {
+        console.error('Error searching custom categories:', customCatError.message);
+        alert('Error searching custom categories: ' + customCatError.message);
+    }
+
+    // Search curated categories
+    const { data: curatedCategories, error: curatedCatError } = await supabase
+        .from('curated_categories')
+        .select('id, name, image')
+        .ilike('name', `%${query}%`);
+    if (curatedCatError) {
+        console.error('Error searching curated categories:', curatedCatError.message);
+        alert('Error searching curated categories: ' + curatedCatError.message);
+    }
+
+    // Search custom items
+    const isNumeric = !isNaN(parseFloat(query));
+    const customItemsQuery = supabase.from('items').select('id, name, price, description, image, category_id, quantifiable');
+    if (isNumeric) {
+        customItemsQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%,price.eq.${parseFloat(query)}`);
+    } else {
+        customItemsQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+    }
+    const { data: customItems, error: customItemError } = await customItemsQuery;
+    if (customItemError) {
+        console.error('Error searching custom items:', customItemError.message);
+        alert('Error searching custom items: ' + customItemError.message);
+    }
+
+    // Search curated items
+    const curatedItemsQuery = supabase.from('curated_items').select('id, name, price, description, image, category_id, quantifiable');
+    if (isNumeric) {
+        curatedItemsQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%,price.eq.${parseFloat(query)}`);
+    } else {
+        curatedItemsQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+    }
+    const { data: curatedItems, error: curatedItemError } = await curatedItemsQuery;
+    if (curatedItemError) {
+        console.error('Error searching curated items:', curatedItemError.message);
+        alert('Error searching curated items: ' + curatedItemError.message);
+    }
+
+    // Combine and display results
+    let resultsHTML = '';
+
+    if (customCategories?.length) {
+        resultsHTML += '<h3>Custom Categories</h3>';
+        resultsHTML += customCategories.map(category => `
+            <div class="admin-category" data-id="${category.id}">
+                ${category.image ? `<img src="${category.image}" alt="${category.name}">` : '<p>No image</p>'}
+                <form class="edit-category-form" data-id="${category.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${category.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${category.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Category</button>
+                        <button type="button" class="delete-button" onclick="deleteCategory(${category.id}, 'custom_categories')">Delete Category</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
+
+    if (curatedCategories?.length) {
+        resultsHTML += '<h3>Curated Categories</h3>';
+        resultsHTML += curatedCategories.map(category => `
+            <div class="admin-category" data-id="${category.id}">
+                ${category.image ? `<img src="${category.image}" alt="${category.name}">` : '<p>No image</p>'}
+                <form class="edit-curated-category-form" data-id="${category.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${category.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${category.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Category</button>
+                        <button type="button" class="delete-button" onclick="deleteCategory(${category.id}, 'curated_categories')">Delete Category</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
+
+    if (customItems?.length) {
+        resultsHTML += '<h3>Custom Items</h3>';
+        resultsHTML += customItems.map(item => `
+            <div class="admin-item" data-id="${item.id}">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '<p>No image</p>'}
+                <form class="edit-item-form" data-id="${item.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${item.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₦)</label>
+                        <input type="number" value="${item.price}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea>${item.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${item.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantifiable</label>
+                        <input type="checkbox" ${item.quantifiable ? 'checked' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Item</button>
+                        <button type="button" class="delete-button" onclick="deleteItem(${item.id}, 'items')">Delete Item</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
+
+    if (curatedItems?.length) {
+        resultsHTML += '<h3>Curated Items</h3>';
+        resultsHTML += curatedItems.map(item => `
+            <div class="admin-item" data-id="${item.id}">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}">` : '<p>No image</p>'}
+                <form class="edit-curated-item-form" data-id="${item.id}">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${item.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₦)</label>
+                        <input type="number" value="${item.price}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea>${item.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Image</label>
+                        <input type="file" accept="image/*" data-current-image="${item.image || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantifiable</label>
+                        <input type="checkbox" ${item.quantifiable ? 'checked' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Update Item</button>
+                        <button type="button" class="delete-button" onclick="deleteItem(${item.id}, 'curated_items')">Delete Item</button>
+                    </div>
+                </form>
+            </div>
+        `).join('');
+    }
+
+    if (!customCategories?.length && !curatedCategories?.length && !customItems?.length && !curatedItems?.length) {
+        resultsHTML = '<p>No results found.</p>';
+    }
+
+    resultsList.innerHTML = resultsHTML;
+    document.getElementById('search-results').classList.remove('hidden');
+    showSection('search-results');
+}
+
+async function deleteCategory(categoryId, table) {
+    if (!confirm('Are you sure you want to delete this category?')) return;
+
+    const { error } = await supabase.from(table).delete().eq('id', categoryId);
+    if (error) {
+        console.error(`Error deleting category from ${table}:`, error.message);
+        alert(`Error deleting category: ${error.message}`);
+    } else {
+        alert('Category deleted successfully!');
+        const searchInput = document.getElementById('search-input');
+        if (searchInput.value) {
+            searchItemsAndCategories(searchInput.value);
+        } else if (table === 'custom_categories') {
+            loadCustomCategories();
+        } else {
+            loadCuratedCategories();
+        }
+    }
 }
 
 async function deleteItem(itemId, table) {
     if (!confirm('Are you sure you want to delete this item?')) return;
-    
+
     const { error } = await supabase.from(table).delete().eq('id', itemId);
     if (error) {
         console.error(`Error deleting item from ${table}:`, error.message);
         alert(`Error deleting item: ${error.message}`);
     } else {
         alert('Item deleted successfully!');
-        if (table === 'items') {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput.value) {
+            searchItemsAndCategories(searchInput.value);
+        } else if (table === 'items') {
             loadCustomItems();
         } else {
             loadCuratedItems();
@@ -224,17 +497,37 @@ async function deleteItem(itemId, table) {
     }
 }
 
+function showSection(sectionId) {
+    const sections = [
+        'search-results',
+        'manage-categories',
+        'manage-curated-categories',
+        'manage-items',
+        'manage-curated-items'
+    ];
+    sections.forEach(id => {
+        const section = document.getElementById(id);
+        section.classList.add('hidden');
+    });
+    const targetSection = document.getElementById(sectionId);
+    targetSection.classList.remove('hidden');
+    if (sectionId === 'manage-categories') loadCustomCategories();
+    if (sectionId === 'manage-curated-categories') loadCuratedCategories();
+    if (sectionId === 'manage-items') loadCustomItems();
+    if (sectionId === 'manage-curated-items') loadCuratedItems();
+}
+
 document.getElementById('category-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('category-name').value;
     const file = croppedFile || document.getElementById('category-image').files[0];
     const image = file ? await uploadImage(file) : null;
-    
+
     if (!image && file) {
         alert('Failed to upload image. Please try again.');
         return;
     }
-    
+
     const { error } = await supabase.from('custom_categories').insert({ name, image });
     if (error) {
         console.error('Error adding category:', error.message);
@@ -243,7 +536,7 @@ document.getElementById('category-form')?.addEventListener('submit', async (e) =
         alert('Category added successfully!');
         document.getElementById('category-form').reset();
         croppedFile = null;
-        loadCategories();
+        loadCustomCategories();
     }
 });
 
@@ -252,12 +545,12 @@ document.getElementById('curated-category-form')?.addEventListener('submit', asy
     const name = document.getElementById('curated-category-name').value;
     const file = croppedFile || document.getElementById('curated-category-image').files[0];
     const image = file ? await uploadImage(file) : null;
-    
+
     if (!image && file) {
         alert('Failed to upload image. Please try again.');
         return;
     }
-    
+
     const { error } = await supabase.from('curated_categories').insert({ name, image });
     if (error) {
         console.error('Error adding curated category:', error.message);
@@ -279,12 +572,12 @@ document.getElementById('item-form')?.addEventListener('submit', async (e) => {
     const quantifiable = document.getElementById('item-quantifiable').checked;
     const file = croppedFile || document.getElementById('item-image').files[0];
     const image = file ? await uploadImage(file) : null;
-    
+
     if (!image && file) {
         alert('Failed to upload image. Please try again.');
         return;
     }
-    
+
     const { error } = await supabase.from('items').insert({ category_id, name, price, description, image, quantifiable });
     if (error) {
         console.error('Error adding item:', error.message);
@@ -306,12 +599,12 @@ document.getElementById('curated-item-form')?.addEventListener('submit', async (
     const quantifiable = document.getElementById('curated-item-quantifiable').checked;
     const file = croppedFile || document.getElementById('curated-item-image').files[0];
     const image = file ? await uploadImage(file) : null;
-    
+
     if (!image && file) {
         alert('Failed to upload image. Please try again.');
         return;
     }
-    
+
     const { error } = await supabase.from('curated_items').insert({ category_id, name, price, description, image, quantifiable });
     if (error) {
         console.error('Error adding curated item:', error.message);
@@ -324,20 +617,36 @@ document.getElementById('curated-item-form')?.addEventListener('submit', async (
     }
 });
 
-document.getElementById('view-custom-items')?.addEventListener('click', () => {
-    const itemsList = document.getElementById('custom-items-list');
-    itemsList.classList.toggle('hidden');
-    if (!itemsList.classList.contains('hidden')) {
-        loadCustomItems();
-    }
+document.getElementById('search-input')?.addEventListener('input', (e) => {
+    searchItemsAndCategories(e.target.value);
 });
 
-document.getElementById('view-curated-items')?.addEventListener('click', () => {
-    const curatedItemsList = document.getElementById('curated-items-list');
-    curatedItemsList.classList.toggle('hidden');
-    if (!curatedItemsList.classList.contains('hidden')) {
-        loadCuratedItems();
-    }
+document.getElementById('view-custom-categories')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('manage-categories');
+    document.getElementById('hamburger-menu').classList.remove('active');
+    document.getElementById('search-input').classList.add('hidden');
+});
+
+document.getElementById('view-curated-categories')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('manage-curated-categories');
+    document.getElementById('hamburger-menu').classList.remove('active');
+    document.getElementById('search-input').classList.add('hidden');
+});
+
+document.getElementById('view-custom-items')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('manage-items');
+    document.getElementById('hamburger-menu').classList.remove('active');
+    document.getElementById('search-input').classList.add('hidden');
+});
+
+document.getElementById('view-curated-items')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('manage-curated-items');
+    document.getElementById('hamburger-menu').classList.remove('active');
+    document.getElementById('search-input').classList.add('hidden');
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -347,8 +656,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = 'index.html';
         return;
     }
-    
-    loadCategories();
+
+    loadCustomCategories();
     loadCuratedCategories();
 
     const fileInputs = [
@@ -357,13 +666,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         'item-image',
         'curated-item-image'
     ].map(id => document.getElementById(id));
-    
+
     fileInputs.forEach(input => {
-        input.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                initCropper(e.target.files[0], e.target.id);
-            }
-        });
+        if (input) {
+            input.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    initCropper(e.target.files[0], e.target.id);
+                }
+            });
+        }
     });
 
     document.getElementById('cropper-save')?.addEventListener('click', async () => {
@@ -387,67 +698,140 @@ document.addEventListener('DOMContentLoaded', async () => {
             cropper = null;
         }
     });
-    
+
+    const categoriesList = document.getElementById('custom-categories-list');
+    if (categoriesList) {
+        categoriesList.addEventListener('submit', async (e) => {
+            if (e.target.classList.contains('edit-category-form')) {
+                e.preventDefault();
+                const categoryId = e.target.dataset.id;
+                const inputs = e.target.querySelectorAll('input');
+                const name = inputs[0].value;
+                const file = croppedFile || inputs[1].files[0];
+                const image = file ? await uploadImage(file) : inputs[1].dataset.currentImage || null;
+
+                if (!image && file) {
+                    alert('Failed to upload image. Please try again.');
+                    return;
+                }
+
+                const { error } = await supabase.from('custom_categories').update({ name, image }).eq('id', categoryId);
+                if (error) {
+                    console.error('Error updating category:', error.message);
+                    alert('Error updating category: ' + error.message);
+                } else {
+                    alert('Category updated successfully!');
+                    croppedFile = null;
+                    loadCustomCategories();
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput.value) searchItemsAndCategories(searchInput.value);
+                }
+            }
+        });
+    }
+
+    const curatedCategoriesList = document.getElementById('curated-categories-list');
+    if (curatedCategoriesList) {
+        curatedCategoriesList.addEventListener('submit', async (e) => {
+            if (e.target.classList.contains('edit-curated-category-form')) {
+                e.preventDefault();
+                const categoryId = e.target.dataset.id;
+                const inputs = e.target.querySelectorAll('input');
+                const name = inputs[0].value;
+                const file = croppedFile || inputs[1].files[0];
+                const image = file ? await uploadImage(file) : inputs[1].dataset.currentImage || null;
+
+                if (!image && file) {
+                    alert('Failed to upload image. Please try again.');
+                    return;
+                }
+
+                const { error } = await supabase.from('curated_categories').update({ name, image }).eq('id', categoryId);
+                if (error) {
+                    console.error('Error updating curated category:', error.message);
+                    alert('Error updating curated category: ' + error.message);
+                } else {
+                    alert('Curated category updated successfully!');
+                    croppedFile = null;
+                    loadCuratedCategories();
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput.value) searchItemsAndCategories(searchInput.value);
+                }
+            }
+        });
+    }
+
     const itemsList = document.getElementById('custom-items-list');
-    itemsList.addEventListener('submit', async (e) => {
-        if (e.target.classList.contains('edit-item-form')) {
-            e.preventDefault();
-            const itemId = e.target.dataset.id;
-            const inputs = e.target.querySelectorAll('input, textarea');
-            const name = inputs[0].value;
-            const price = parseFloat(inputs[1].value);
-            const description = inputs[2].value || null;
-            const file = croppedFile || inputs[3].files[0];
-            const image = file ? await uploadImage(file) : inputs[3].dataset.currentImage || null;
-            
-            if (!image && file) {
-                alert('Failed to upload image. Please try again.');
-                return;
+    if (itemsList) {
+        itemsList.addEventListener('submit', async (e) => {
+            if (e.target.classList.contains('edit-item-form')) {
+                e.preventDefault();
+                const itemId = e.target.dataset.id;
+                const inputs = e.target.querySelectorAll('input, textarea');
+                const name = inputs[0].value;
+                const price = parseFloat(inputs[1].value);
+                const description = inputs[2].value || null;
+                const file = croppedFile || inputs[3].files[0];
+                const image = file ? await uploadImage(file) : inputs[3].dataset.currentImage || null;
+                const quantifiable = inputs[4].checked;
+
+                if (!image && file) {
+                    alert('Failed to upload image. Please try again.');
+                    return;
+                }
+
+                const { error } = await supabase.from('items').update({ name, price, description, image, quantifiable }).eq('id', itemId);
+                if (error) {
+                    console.error('Error updating item:', error.message);
+                    alert('Error updating item: ' + error.message);
+                } else {
+                    alert('Item updated successfully!');
+                    croppedFile = null;
+                    loadCustomItems();
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput.value) searchItemsAndCategories(searchInput.value);
+                }
             }
-            
-            const { error } = await supabase.from('items').update({ name, price, description, image }).eq('id', itemId);
-            if (error) {
-                console.error('Error updating item:', error.message);
-                alert('Error updating item: ' + error.message);
-            } else {
-                alert('Item updated successfully!');
-                croppedFile = null;
-                loadCustomItems();
-            }
-        }
-    });
-    
+        });
+    }
+
     const curatedItemsList = document.getElementById('curated-items-list');
-    curatedItemsList.addEventListener('submit', async (e) => {
-        if (e.target.classList.contains('edit-curated-item-form')) {
-            e.preventDefault();
-            const itemId = e.target.dataset.id;
-            const inputs = e.target.querySelectorAll('input, textarea');
-            const name = inputs[0].value;
-            const price = parseFloat(inputs[1].value);
-            const description = inputs[2].value || null;
-            const file = croppedFile || inputs[3].files[0];
-            const image = file ? await uploadImage(file) : inputs[3].dataset.currentImage || null;
-            
-            if (!image && file) {
-                alert('Failed to upload image. Please try again.');
-                return;
+    if (curatedItemsList) {
+        curatedItemsList.addEventListener('submit', async (e) => {
+            if (e.target.classList.contains('edit-curated-item-form')) {
+                e.preventDefault();
+                const itemId = e.target.dataset.id;
+                const inputs = e.target.querySelectorAll('input, textarea');
+                const name = inputs[0].value;
+                const price = parseFloat(inputs[1].value);
+                const description = inputs[2].value || null;
+                const file = croppedFile || inputs[3].files[0];
+                const image = file ? await uploadImage(file) : inputs[3].dataset.currentImage || null;
+                const quantifiable = inputs[4].checked;
+
+                if (!image && file) {
+                    alert('Failed to upload image. Please try again.');
+                    return;
+                }
+
+                const { error } = await supabase.from('curated_items').update({ name, price, description, image, quantifiable }).eq('id', itemId);
+                if (error) {
+                    console.error('Error updating curated item:', error.message);
+                    alert('Error updating curated item: ' + error.message);
+                } else {
+                    alert('Curated item updated successfully!');
+                    croppedFile = null;
+                    loadCuratedItems();
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput.value) searchItemsAndCategories(searchInput.value);
+                }
             }
-            
-            const { error } = await supabase.from('curated_items').update({ name, price, description, image }).eq('id', itemId);
-            if (error) {
-                console.error('Error updating curated item:', error.message);
-                alert('Error updating curated item: ' + error.message);
-            } else {
-                alert('Curated item updated successfully!');
-                croppedFile = null;
-                loadCuratedItems();
-            }
-        }
-    });
-    
+        });
+    }
+
     const isDarkMode = localStorage.getItem('darkMode') === 'true';
     document.body.classList.toggle('dark-mode', isDarkMode);
 });
 
+window.deleteCategory = deleteCategory;
 window.deleteItem = deleteItem;
