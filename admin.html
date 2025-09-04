@@ -16,18 +16,31 @@
         <div class="hamburger">☰</div>
         <div id="hamburger-menu">
             <span class="close-menu">✕</span>
-            <a href="#">Home</a>
-            <a href="#">Shop</a>
-            <a href="#">Blog</a>
-            <a href="#">Contact</a>
-            <a href="#">About</a>
+            <div class="search-container">
+                <span class="search-icon"><ion-icon name="search-outline"></ion-icon></span>
+                <input type="text" id="search-input" class="search-bar hidden" placeholder="Search categories or items...">
+            </div>
+            <a href="#" id="view-custom-categories">View/Edit Custom Categories</a>
+            <a href="#" id="view-curated-categories">View/Edit Curated Categories</a>
+            <a href="#" id="view-custom-items">View/Edit Custom Items</a>
+            <a href="#" id="view-curated-items">View/Edit Curated Items</a>
             <a href="#" id="logout">Logout</a>
         </div>
     </header>
     <main>
         <h1>Admin Dashboard</h1>
-        <section id="manage-categories">
-            <h2>Add Custom Category</h2>
+        <section id="search-results" class="hidden">
+            <div class="section-header">
+                <a href="admin.html" class="back-icon">← Back</a>
+                <h2>Search Results</h2>
+            </div>
+            <div id="search-results-list" class="results-grid"></div>
+        </section>
+        <section id="manage-categories" class="hidden">
+            <div class="section-header">
+                <a href="admin.html" class="back-icon">← Back</a>
+                <h2>Manage Custom Categories</h2>
+            </div>
             <form id="category-form">
                 <div class="form-group">
                     <label for="category-name">Category Name</label>
@@ -41,9 +54,13 @@
                     <button type="submit">Add Category</button>
                 </div>
             </form>
+            <div id="custom-categories-list" class="categories-grid"></div>
         </section>
-        <section id="manage-curated-categories">
-            <h2>Add Curated Category</h2>
+        <section id="manage-curated-categories" class="hidden">
+            <div class="section-header">
+                <a href="admin.html" class="back-icon">← Back</a>
+                <h2>Manage Curated Categories</h2>
+            </div>
             <form id="curated-category-form">
                 <div class="form-group">
                     <label for="curated-category-name">Curated Category Name</label>
@@ -57,9 +74,13 @@
                     <button type="submit">Add Curated Category</button>
                 </div>
             </form>
+            <div id="curated-categories-list" class="categories-grid"></div>
         </section>
-        <section id="manage-items">
-            <h2>Add Item to Custom Category</h2>
+        <section id="manage-items" class="hidden">
+            <div class="section-header">
+                <a href="admin.html" class="back-icon">← Back</a>
+                <h2>Manage Custom Items</h2>
+            </div>
             <form id="item-form">
                 <div class="form-group">
                     <label for="item-category">Category</label>
@@ -89,9 +110,13 @@
                     <button type="submit">Add Item</button>
                 </div>
             </form>
+            <div id="custom-items-list" class="items-grid"></div>
         </section>
-        <section id="manage-curated-items">
-            <h2>Add Item to Curated Category</h2>
+        <section id="manage-curated-items" class="hidden">
+            <div class="section-header">
+                <a href="admin.html" class="back-icon">← Back</a>
+                <h2>Manage Curated Items</h2>
+            </div>
             <form id="curated-item-form">
                 <div class="form-group">
                     <label for="curated-item-category">Curated Category</label>
@@ -121,14 +146,7 @@
                     <button type="submit">Add Curated Item</button>
                 </div>
             </form>
-        </section>
-        <section>
-            <button id="view-custom-items">View/Edit Custom Items</button>
-            <div id="custom-items-list" class="hidden"></div>
-        </section>
-        <section>
-            <button id="view-curated-items">View/Edit Curated Items</button>
-            <div id="curated-items-list" class="hidden"></div>
+            <div id="curated-items-list" class="items-grid"></div>
         </section>
         <div id="cropper-modal" class="modal">
             <div class="modal-content">
@@ -161,24 +179,6 @@
                 </a>
             </li>
             <li class="list">
-                <a href="curate.html">
-                    <span class="icon"><ion-icon name="color-palette-outline"></ion-icon></span>
-                    <span class="text">Curate</span>
-                </a>
-            </li>
-            <li class="list">
-                <a href="boxes.html">
-                    <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>
-                    <span class="text">Boxes</span>
-                </a>
-            </li>
-            <li class="list">
-                <a href="cart.html">
-                    <span class="icon"><ion-icon name="cart-outline"></ion-icon></span>
-                    <span class="text">Cart</span>
-                </a>
-            </li>
-            <li class="list">
                 <a href="profile.html">
                     <span class="icon"><ion-icon name="person-outline"></ion-icon></span>
                     <span class="text">Profile</span>
@@ -195,10 +195,20 @@
     <script>
         document.querySelector('.hamburger').addEventListener('click', () => {
             document.getElementById('hamburger-menu').classList.toggle('active');
+            const searchBar = document.getElementById('search-input');
+            if (!document.getElementById('hamburger-menu').classList.contains('active')) {
+                searchBar.classList.add('hidden');
+            }
         });
 
         document.querySelector('.close-menu').addEventListener('click', () => {
             document.getElementById('hamburger-menu').classList.remove('active');
+            document.getElementById('search-input').classList.add('hidden');
+        });
+
+        document.querySelector('.search-icon').addEventListener('click', () => {
+            document.getElementById('search-input').classList.toggle('hidden');
+            document.getElementById('search-input').focus();
         });
 
         const list = document.querySelectorAll('.navigation .list');
@@ -211,7 +221,6 @@
             const isDarkMode = localStorage.getItem('darkMode') === 'true';
             document.body.classList.toggle('dark-mode', isDarkMode);
 
-            // Ensure correct active class on page load
             const currentPage = window.location.pathname.split('/').pop() || 'admin.html';
             list.forEach(item => {
                 const href = item.querySelector('a').getAttribute('href');
