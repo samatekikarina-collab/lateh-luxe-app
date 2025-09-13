@@ -1,10 +1,19 @@
 import { supabase } from './supabase.js';
 import { checkAuth } from './auth.js';
+import Swal from 'https://cdn.jsdelivr.net/npm/sweetalert2@11/+esm';
 
 async function loadPurchases() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: purchases, error } = await supabase.from('purchases').select('*').eq('user_id', user.id);
-    if (error) return alert(error.message);
+    if (error) {
+        await Swal.fire({
+            title: "Error",
+            text: error.message,
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+        });
+        return;
+    }
     const list = document.getElementById('purchases-list');
     list.innerHTML = '';
     for (const purchase of purchases) {
@@ -37,7 +46,15 @@ async function loadPurchases() {
 async function loadUserProfile() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase.from('users').select('username, email, phone_number').eq('id', user.id).single();
-    if (error) return alert(error.message);
+    if (error) {
+        await Swal.fire({
+            title: "Error",
+            text: error.message,
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+        });
+        return;
+    }
     document.getElementById('edit-username').value = data.username || '';
     document.getElementById('edit-email').value = data.email;
     document.getElementById('edit-phone-number').value = data.phone_number || '';
@@ -55,13 +72,30 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
         phone_number
     }).eq('id', user.id);
     if (updateError) {
-        alert('Error updating profile: ' + updateError.message);
+        await Swal.fire({
+            title: "Error",
+            text: `Error updating profile: ${updateError.message}`,
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+        });
     } else {
         if (email !== user.email) {
             const { error: authError } = await supabase.auth.updateUser({ email });
-            if (authError) alert('Error updating auth email: ' + authError.message);
+            if (authError) {
+                await Swal.fire({
+                    title: "Error",
+                    text: `Error updating auth email: ${authError.message}`,
+                    icon: "error",
+                    confirmButtonColor: "#FFD700"
+                });
+            }
         }
-        alert('Profile updated successfully!');
+        await Swal.fire({
+            title: "Success",
+            text: "Profile updated successfully!",
+            icon: "success",
+            confirmButtonColor: "#FFD700"
+        });
         loadUserProfile();
     }
 });
@@ -69,7 +103,13 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
 document.addEventListener('DOMContentLoaded', async () => {
     const userData = await checkAuth();
     if (!userData) {
-        window.location.href = 'index.html';
+        await Swal.fire({
+            title: "Error",
+            text: "You must be logged in to access this page.",
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+        });
+        window.location.href = 'login.html'; // Updated redirect
         return;
     }
     loadPurchases();
