@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lateh Luxe - Confirm Email</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <header>
@@ -27,15 +28,11 @@
             const urlParams = new URLSearchParams(window.location.search);
             const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
 
-            // The access_token and type=signup from the URL hash indicate a successful confirmation redirect from Supabase
             const accessTokenInHash = hashParams.get('access_token');
             const typeInHash = hashParams.get('type');
 
             if (accessTokenInHash && typeInHash === 'signup') {
                 console.log('Confirmation redirect detected via hash parameters.');
-                // At this point, Supabase has already handled the confirmation on the backend.
-                // The user's session should now be active in the browser.
-
                 try {
                     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -45,8 +42,16 @@
                             <p>Email confirmed successfully! You can now log in.</p>
                             <p>Redirecting to login in 3 seconds...</p>
                         `;
+                        await Swal.fire({
+                            title: "Success",
+                            text: "Email confirmed successfully! Redirecting to login...",
+                            icon: "success",
+                            timer: 3000,
+                            showConfirmButton: false,
+                            confirmButtonColor: "#FFD700"
+                        });
                         setTimeout(() => {
-                            window.location.href = 'index.html';
+                            window.location.href = 'index.html'; // Updated redirect
                         }, 3000);
                     } else {
                         console.error('No active user session after confirmation redirect:', userError?.message);
@@ -54,22 +59,38 @@
                             <p>Email confirmation link processed, but no active session found. Please try logging in.</p>
                             <p><a href="index.html">Return to Login</a></p>
                         `;
+                        await Swal.fire({
+                            title: "Warning",
+                            text: "No active session found. Please try logging in.",
+                            icon: "warning",
+                            confirmButtonColor: "#FFD700"
+                        });
                     }
                 } catch (err) {
                     console.error('Error checking user session:', err.message);
                     messageDiv.innerHTML = `
                         <p>An unexpected error occurred while verifying your session.</p>
-                        <p><a href="index.html">Return to Login</a></p>
+                        <p><a href="login.html">Return to Login</a></p>
                     `;
+                    await Swal.fire({
+                        title: "Error",
+                        text: "An unexpected error occurred. Please try logging in.",
+                        icon: "error",
+                        confirmButtonColor: "#FFD700"
+                    });
                 }
             } else {
                 console.log('Not a direct Supabase confirmation redirect or missing parameters.');
-                // This branch handles cases where the page is loaded directly or without the expected hash params.
-                // It might be a manual visit or an expired/invalid link.
                 messageDiv.innerHTML = `
                     <p>Invalid or expired confirmation link.</p>
-                    <p>Please request a new confirmation email if needed or <a href="index.html">return to login</a>.</p>
+                    <p>Please request a new confirmation email if needed or <a href="login.html">return to login</a>.</p>
                 `;
+                await Swal.fire({
+                    title: "Error",
+                    text: "Invalid or expired confirmation link. Please try again.",
+                    icon: "error",
+                    confirmButtonColor: "#FFD700"
+                });
             }
         }
 
