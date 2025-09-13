@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import Swal from 'https://cdn.jsdelivr.net/npm/sweetalert2@11/+esm';
 
 // Utility function to check authentication status
 export async function checkAuth() {
@@ -20,7 +21,6 @@ export async function checkAuth() {
       return null;
     }
 
-    console.log('Authenticated user:', { ...user, ...data });
     return { ...user, ...data };
   } catch (err) {
     console.error('Unexpected error in checkAuth:', err.message);
@@ -52,20 +52,31 @@ if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     console.log('Login form submitted');
+
     const email = document.getElementById('login-email')?.value;
     const password = document.getElementById('login-password')?.value;
 
     if (!email || !password) {
       console.error('Email or password missing');
-      alert('Please enter both email and password.');
+      await Swal.fire({
+        title: "Error",
+        text: "Please enter both email and password.",
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
       return;
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         console.error('Login error:', error.message);
-        alert(`Login failed: ${error.message}`);
+        await Swal.fire({
+          title: "Error",
+          text: `Login failed: ${error.message}`,
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
         return;
       }
 
@@ -73,7 +84,12 @@ if (loginForm) {
       const userData = await checkAuth();
       if (!userData) {
         console.error('Failed to fetch user data after login');
-        alert('Error fetching user data.');
+        await Swal.fire({
+          title: "Error",
+          text: "Error fetching user data.",
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
         return;
       }
 
@@ -86,13 +102,17 @@ if (loginForm) {
         });
       }
 
-      // Redirect based on user role
       const redirectUrl = userData.role === 'admin' ? 'admin.html' : 'customer.html';
       console.log(`Redirecting to ${redirectUrl}`);
       window.location.href = redirectUrl;
     } catch (err) {
       console.error('Unexpected error during login:', err.message);
-      alert(`Unexpected error during login: ${err.message}`);
+      await Swal.fire({
+        title: "Error",
+        text: `Unexpected error during login: ${err.message}`,
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
     }
   });
 } else {
@@ -105,6 +125,7 @@ if (signupForm) {
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     console.log('Signup form submitted');
+
     const username = document.getElementById('signup-username')?.value;
     const email = document.getElementById('signup-email')?.value;
     const phone_number = document.getElementById('signup-phone')?.value;
@@ -112,31 +133,41 @@ if (signupForm) {
 
     if (!username || !email || !password) {
       console.error('Missing required signup fields');
-      alert('Please fill in all required fields.');
+      await Swal.fire({
+        title: "Error",
+        text: "Please fill in all required fields.",
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
       return;
     }
 
     try {
-      // Check for existing email or username
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
-        .select('id, email, username')
+        .select('id')
         .or(`email.eq.${email},username.eq.${username}`)
         .maybeSingle();
 
       if (checkError) {
         console.error('Error checking existing user:', checkError.message);
-        alert(`Error checking user: ${checkError.message}`);
+        await Swal.fire({
+          title: "Error",
+          text: `Error checking user: ${checkError.message}`,
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
         return;
       }
 
       if (existingUser) {
-        console.error('Email or username already exists:', existingUser);
-        alert(
-          existingUser.email === email
-            ? 'Email already exists. Please use a different email.'
-            : 'Username already exists. Please choose a different username.'
-        );
+        console.error('Email or username already exists');
+        await Swal.fire({
+          title: "Error",
+          text: "Email or username already exists. Please use different ones.",
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
         return;
       }
 
@@ -152,37 +183,63 @@ if (signupForm) {
 
       if (error) {
         console.error('Signup error:', error.message);
-        alert(`Signup failed: ${error.message}`);
+        await Swal.fire({
+          title: "Error",
+          text: `Signup failed: ${error.message}`,
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
         return;
       }
 
       if (data.user) {
         console.log('User created with ID:', data.user.id);
-        // Insert user into users table
-        const { error: insertError } = await supabase.from('users').insert({
-          id: data.user.id,
-          email,
-          username,
-          phone_number: phone_number || null,
-          role: 'user'
-        });
+        const { error: insertError } = await supabase.from('users').insert([
+          {
+            id: data.user.id,
+            email,
+            username,
+            phone_number: phone_number || null,
+            role: 'user'
+          }
+        ]);
 
         if (insertError) {
           console.error('Error adding user to database:', insertError.message);
-          alert(`Error adding user data: ${insertError.message}`);
+          await Swal.fire({
+            title: "Error",
+            text: `Error adding user: ${insertError.message}`,
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+          });
           return;
         }
 
         console.log('Signup successful, user added to database');
-        alert('Signup successful! Please check your email to confirm your account.');
-        signupForm.reset();
+        await Swal.fire({
+          title: "Success",
+          text: "Signup successful! Please check your email to confirm.",
+          icon: "success",
+          confirmButtonColor: "#FFD700"
+        });
+        window.location.href = 'login.html'; // Updated redirect
       } else {
         console.error('No user data returned after signup');
-        alert('Signup failed: No user data returned.');
+        await Swal.fire({
+          title: "Error",
+          text: "Signup failed: No user data returned.",
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
       }
     } catch (err) {
       console.error('Unexpected error during signup:', err.message);
-      alert(`Unexpected error during signup: ${err.message}`);
+      await Swal.fire({
+        title: "Error",
+        text: `Unexpected error during signup: ${err.message}`,
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
     }
   });
 } else {
@@ -195,10 +252,16 @@ if (forgotPasswordLink) {
   forgotPasswordLink.addEventListener('click', async (e) => {
     e.preventDefault();
     console.log('Forgot password link clicked');
-    const email = document.getElementById('login-email')?.value || prompt('Enter your email to reset password:');
+
+    const email = document.getElementById('login-email')?.value;
     if (!email) {
       console.error('Email not provided for password reset');
-      alert('Please enter your email address.');
+      await Swal.fire({
+        title: "Error",
+        text: "Please enter your email address.",
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
       return;
     }
 
@@ -210,15 +273,30 @@ if (forgotPasswordLink) {
 
       if (error) {
         console.error('Password reset error:', error.message);
-        alert(`Error sending password reset email: ${error.message}`);
+        await Swal.fire({
+          title: "Error",
+          text: `Error sending password reset email: ${error.message}`,
+          icon: "error",
+          confirmButtonColor: "#FFD700"
+        });
         return;
       }
 
       console.log('Password reset email sent successfully');
-      alert('Password reset email sent! Check your inbox.');
+      await Swal.fire({
+        title: "Success",
+        text: "Password reset email sent! Check your inbox.",
+        icon: "success",
+        confirmButtonColor: "#FFD700"
+      });
     } catch (err) {
       console.error('Unexpected error during password reset:', err.message);
-      alert(`Unexpected error during password reset: ${err.message}`);
+      await Swal.fire({
+        title: "Error",
+        text: `Unexpected error during password reset: ${err.message}`,
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
     }
   });
 } else {
@@ -232,18 +310,25 @@ if (logoutLink) {
     e.preventDefault();
     console.log('Logout link clicked');
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error.message);
-        alert(`Error during logout: ${error.message}`);
-        return;
-      }
+      await supabase.auth.signOut();
       console.log('User signed out successfully');
-      alert('Logged out successfully!');
-      window.location.href = 'index.html';
+      await Swal.fire({
+        title: "Success",
+        text: "Logged out successfully.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+        confirmButtonColor: "#FFD700"
+      });
+      window.location.href = 'login.html'; // Updated redirect
     } catch (err) {
-      console.error('Unexpected error during logout:', err.message);
-      alert(`Unexpected error during logout: ${err.message}`);
+      console.error('Error during logout:', err.message);
+      await Swal.fire({
+        title: "Error",
+        text: `Error during logout: ${err.message}`,
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
     }
   });
 } else {
