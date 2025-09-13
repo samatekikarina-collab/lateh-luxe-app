@@ -6,6 +6,7 @@
     <title>Lateh Luxe - Admin Dashboard</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <header>
@@ -20,6 +21,7 @@
                 <span class="search-icon"><ion-icon name="search-outline"></ion-icon></span>
                 <input type="text" id="search-input" class="search-bar hidden" placeholder="Search categories or items...">
             </div>
+            <a href="#" id="view-orders">View/Edit Orders</a>
             <a href="#" id="view-custom-categories">View/Edit Custom Categories</a>
             <a href="#" id="view-curated-categories">View/Edit Curated Categories</a>
             <a href="#" id="view-custom-items">View/Edit Custom Items</a>
@@ -29,6 +31,13 @@
     </header>
     <main>
         <h1>Admin Dashboard</h1>
+        <section id="orders" class="hidden">
+            <div class="section-header">
+                <a href="admin.html" class="back-icon">← Back</a>
+                <h2>Manage Orders</h2>
+            </div>
+            <div id="orders-list" class="orders-grid"></div>
+        </section>
         <section id="search-results" class="hidden">
             <div class="section-header">
                 <a href="admin.html" class="back-icon">← Back</a>
@@ -166,10 +175,10 @@
                     <span class="text">Admin</span>
                 </a>
             </li>
-            <li class="list admin-link">
-                <a href="admin-carts.html">
+            <li class="list">
+                <a href="#" id="nav-orders">
                     <span class="icon"><ion-icon name="cart-outline"></ion-icon></span>
-                    <span class="text">Manage Carts</span>
+                    <span class="text">Manage Orders</span>
                 </a>
             </li>
             <li class="list">
