@@ -1,0 +1,40 @@
+body {
+    margin: 0;
+}
+
+canvas {
+    position: fixed;
+}
+
+span.title {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #eef;
+    z-index: 10;
+    font-family: serif;
+    font-size: 10vmin;
+    font-weight: bold;
+    text-shadow: 0 0 20px gold;
+}
+
+span.typing-text {
+    width: 100vw;
+    position: fixed;
+    top: 70vh; /* Position below the title */
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #eef;
+    z-index: 10;
+    font-family: serif; /* Match Lateh Luxe font */
+    font-size: 4.5vmin; /* Smaller font size */
+    font-weight: bold; /* Match Lateh Luxe weight */
+    text-shadow: 0 0 10px gold; /* Gold text-shadow */
+}
