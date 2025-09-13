@@ -1,11 +1,17 @@
 import { supabase } from './supabase.js';
 import { checkAuth } from './auth.js';
+import Swal from 'https://cdn.jsdelivr.net/npm/sweetalert2@11/+esm';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const userData = await checkAuth();
   if (!userData) {
-    alert('You must be logged in to view your cart.');
-    window.location.href = 'index.html';
+    await Swal.fire({
+      title: "Error",
+      text: "You must be logged in to view your cart.",
+      icon: "error",
+      confirmButtonColor: "#FFD700"
+    });
+    window.location.href = 'login.html'; // Updated redirect
     return;
   }
   
@@ -14,7 +20,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('logout').addEventListener('click', async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('user');
-    window.location.href = 'index.html';
+    await Swal.fire({
+      title: "Success",
+      text: "Logged out successfully.",
+      icon: "success",
+      timer: 1500,
+      showConfirmButton: false,
+      confirmButtonColor: "#FFD700"
+    });
+    window.location.href = 'login.html'; // Updated redirect
   });
 });
 
@@ -28,7 +42,12 @@ async function loadCartItems(userData) {
     
     if (error) {
       console.error('Error loading cart items:', error.message);
-      alert('Error loading cart items: ' + error.message);
+      await Swal.fire({
+        title: "Error",
+        text: `Error loading cart items: ${error.message}`,
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
       return;
     }
     
@@ -40,7 +59,12 @@ async function loadCartItems(userData) {
     
     if (itemsError) {
       console.error('Error fetching item details:', itemsError.message);
-      alert('Error fetching item details: ' + itemsError.message);
+      await Swal.fire({
+        title: "Error",
+        text: `Error fetching item details: ${itemsError.message}`,
+        icon: "error",
+        confirmButtonColor: "#FFD700"
+      });
       return;
     }
     
@@ -82,7 +106,12 @@ async function loadCartItems(userData) {
         const cartId = button.dataset.cartId;
         const cart = carts.find(c => c.id === cartId);
         if (!cart) {
-          alert('Cart not found.');
+          await Swal.fire({
+            title: "Error",
+            text: "Cart not found.",
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+          });
           return;
         }
         
@@ -94,7 +123,12 @@ async function loadCartItems(userData) {
           
           if (itemsError) {
             console.error('Error fetching items for reminder:', itemsError.message);
-            alert('Error fetching items for reminder: ' + itemsError.message);
+            await Swal.fire({
+              title: "Error",
+              text: `Error fetching items for reminder: ${itemsError.message}`,
+              icon: "error",
+              confirmButtonColor: "#FFD700"
+            });
             return;
           }
           
@@ -105,13 +139,23 @@ async function loadCartItems(userData) {
           window.open(whatsappUrl, '_blank');
         } catch (error) {
           console.error('Error generating WhatsApp message:', error.message);
-          alert('Error generating WhatsApp message: ' + error.message);
+          await Swal.fire({
+            title: "Error",
+            text: `Error generating WhatsApp message: ${error.message}`,
+            icon: "error",
+            confirmButtonColor: "#FFD700"
+          });
         }
       });
     });
   } catch (error) {
     console.error('Unexpected error loading cart:', error.message);
-    alert('Unexpected error loading cart: ' + error.message);
+    await Swal.fire({
+      title: "Error",
+      text: `Unexpected error loading cart: ${error.message}`,
+      icon: "error",
+      confirmButtonColor: "#FFD700"
+    });
   }
 }
 
