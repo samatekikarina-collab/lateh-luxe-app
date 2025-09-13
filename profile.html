@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lateh Luxe - Profile</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <header>
@@ -16,11 +17,11 @@
         <button id="dark-mode-toggle" title="Toggle Dark Mode">🌞</button>
         <div id="hamburger-menu">
             <span class="close-menu">✕</span>
-            <a href="#">Home</a>
-            <a href="#">Shop</a>
-            <a href="#">Blog</a>
-            <a href="#">Contact</a>
-            <a href="#">About</a>
+            <a href="customer.html">Home</a>
+            <a href="shop.html">Shop</a>
+            <a href="blog.html">Blog</a>
+            <a href="contact.html">Contact</a>
+            <a href="about.html">About</a>
             <a href="#" id="logout">Logout</a>
         </div>
     </header>
@@ -117,7 +118,6 @@
             document.body.classList.toggle('dark-mode', isDarkMode);
             document.getElementById('dark-mode-toggle').textContent = isDarkMode ? '🌞' : '🌙';
 
-            // Ensure correct active class on page load
             const currentPage = window.location.pathname.split('/').pop() || 'profile.html';
             list.forEach(item => {
                 const href = item.querySelector('a').getAttribute('href');
