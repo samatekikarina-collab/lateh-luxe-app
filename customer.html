@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lateh Luxe - Customer Dashboard</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <header>
@@ -31,6 +32,10 @@
             <button onclick="window.location.href='cart.html'">View Cart</button>
             <button onclick="window.location.href='profile.html'">View Profile</button>
         </div>
+        <section id="packages-in-progress-section">
+            <h2>Packages in Progress</h2>
+            <div id="packages-in-progress-list" class="curations-grid"></div>
+        </section>
     </main>
     <div class="navigation">
         <ul>
@@ -92,7 +97,6 @@
             const isDarkMode = localStorage.getItem('darkMode') === 'true';
             document.body.classList.toggle('dark-mode', isDarkMode);
 
-            // Ensure correct active class on page load
             const currentPage = window.location.pathname.split('/').pop() || 'customer.html';
             list.forEach(item => {
                 const href = item.querySelector('a').getAttribute('href');
