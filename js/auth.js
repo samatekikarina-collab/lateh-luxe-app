@@ -194,35 +194,56 @@ if (signupForm) {
 
       if (data.user) {
         console.log('User created with ID:', data.user.id);
-        const { error: insertError } = await supabase.from('users').insert([
-          {
-            id: data.user.id,
-            email,
-            username,
-            phone_number: phone_number || null,
-            role: 'user'
-          }
-        ]);
+        const { data: existingId, error: idCheckError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', data.user.id)
+          .maybeSingle();
 
-        if (insertError) {
-          console.error('Error adding user to database:', insertError.message);
+        if (idCheckError) {
+          console.error('Error checking existing ID:', idCheckError.message);
           await Swal.fire({
             title: "Error",
-            text: `Error adding user: ${insertError.message}`,
+            text: `Error checking ID: ${idCheckError.message}`,
             icon: "error",
             confirmButtonColor: "#FFD700"
           });
           return;
         }
 
-        console.log('Signup successful, user added to database');
+        if (!existingId) {
+          const { error: insertError } = await supabase.from('users').insert([
+            {
+              id: data.user.id,
+              email,
+              username,
+              phone_number: phone_number || null,
+              role: 'user'
+            }
+          ]);
+
+          if (insertError) {
+            console.error('Error adding user to database:', insertError.message);
+            await Swal.fire({
+              title: "Error",
+              text: `Error adding user: ${insertError.message}`,
+              icon: "error",
+              confirmButtonColor: "#FFD700"
+            });
+            return;
+          }
+        } else {
+          console.log('User with this ID already exists, skipping insert');
+        }
+
+        console.log('Signup successful');
         await Swal.fire({
           title: "Success",
           text: "Signup successful! Please check your email to confirm.",
           icon: "success",
           confirmButtonColor: "#FFD700"
         });
-        window.location.href = 'login.html'; // Updated redirect
+        window.location.href = 'login.html';
       } else {
         console.error('No user data returned after signup');
         await Swal.fire({
